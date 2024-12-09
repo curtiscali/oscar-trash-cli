@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
 
+mod common;
+mod actions;
+
 #[derive(Subcommand, Debug)]
 enum OscarCommand {
     /// trash files and directories.
