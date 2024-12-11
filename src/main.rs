@@ -15,13 +15,17 @@ enum OscarCommand {
     List {},
 
     /// restore a trashed file. 
-    Restore {},
+    Restore {
+        /// Overwrite the file currently on disk if there is a conflict
+        #[arg(long, default_value_t=false)]
+        overwrite: bool
+    },
 
     /// remove individual files from the trashcan. 
     Remove {}
 }
 
-/// Command Line tool to manage your system's Freedesktop.org trash folder
+/// Command Line tool to manage your system's Freedesktop.org trash
 /// written in Rust.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, infer_subcommands = true)]
@@ -35,10 +39,10 @@ fn main() {
 
     // TODO: implement each of these sub commands
     match args.cmd {
-        Put => {},
-        Empty => {},
-        List => {},
-        Restore => {},
-        Remove => {}
+        OscarCommand::Put {} => {},
+        OscarCommand::Empty {} => {},
+        OscarCommand::List {} => {},
+        OscarCommand::Restore { overwrite } => {},
+        OscarCommand::Remove {} => {}
     }
 }
