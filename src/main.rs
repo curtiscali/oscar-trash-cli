@@ -1,4 +1,6 @@
+use actions::trash_list::trash_list;
 use clap::{Parser, Subcommand};
+use common::create_trash_dir_if_not_exists;
 
 mod common;
 mod actions;
@@ -41,7 +43,12 @@ fn main() {
     match args.cmd {
         OscarCommand::Put {} => {},
         OscarCommand::Empty {} => {},
-        OscarCommand::List {} => {},
+        OscarCommand::List {} => {
+            match trash_list() {
+                Ok(_) => {},
+                Err(error) => println!("Error: {}", error)
+            }
+        },
         OscarCommand::Restore { overwrite } => {},
         OscarCommand::Remove {} => {}
     }
