@@ -1,6 +1,5 @@
 use actions::trash_list::trash_list;
 use clap::{Parser, Subcommand};
-use common::create_trash_dir_if_not_exists;
 
 mod common;
 mod actions;
