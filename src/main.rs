@@ -23,7 +23,14 @@ enum OscarCommand {
     },
 
     /// remove individual files from the trashcan. 
-    Remove {}
+    Remove {},
+
+    /// gets info on the contents of the trash, including total size, number of files, number of
+    /// directories, etc
+    Info {
+        #[arg(long, default_value_t=false)]
+        sizes_only: bool
+    }
 }
 
 /// Command Line tool to manage your system's Freedesktop.org trash
@@ -49,6 +56,9 @@ fn main() {
             }
         },
         OscarCommand::Restore { overwrite } => {},
-        OscarCommand::Remove {} => {}
+        OscarCommand::Remove {} => {},
+        OscarCommand::Info {  } => {
+
+        }
     }
 }
