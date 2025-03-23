@@ -1,5 +1,5 @@
 use std::{fs::{read_dir, read_to_string}, io::Error, path::PathBuf};
-use chrono::{DateTime, Local, NaiveDateTime};
+use chrono::NaiveDateTime;
 use configparser::ini::Ini;
 use tabled::{settings::Style, Table, Tabled};
 use crate::common::*;
@@ -62,12 +62,12 @@ impl TrashInfo {
                     Err(_) => None
                 }
             },
-            Err(error) => None
+            Err(_) => None
         }
     }
 }
 
-pub fn get_home_trash_contents() -> Result<Vec<TrashInfo>, Error> {
+pub fn get_home_trash_contents(recursive: bool) -> Result<Vec<TrashInfo>, Error> {
     let mut trash_contents = vec![];
 
     match freedesktop_home_trash_info_dir() {
@@ -79,6 +79,7 @@ pub fn get_home_trash_contents() -> Result<Vec<TrashInfo>, Error> {
                             Ok(entry) => {
                                 let path = entry.path();
                                 if path.is_file() {
+                                    // TODO: test corresponding name in files dir to test if it's a directory & recursively traverse if so & given the flag
                                     match TrashInfo::from_file(path) {
                                         Some(trash_info) => trash_contents.push(trash_info),
                                         None => continue
@@ -103,10 +104,10 @@ pub fn get_home_trash_contents() -> Result<Vec<TrashInfo>, Error> {
     }
 }
 
-pub fn trash_list() -> Result<bool, Error> {
+pub fn trash_list(recursive: bool) -> Result<bool, Error> {
     match create_trash_dir_if_not_exists() {
         Ok(_) => {
-            match get_home_trash_contents() {
+            match get_home_trash_contents(recursive) {
                 Ok(trash_contents) => {
                     let mut table = Table::new(trash_contents);
                     table.with(Style::modern_rounded());

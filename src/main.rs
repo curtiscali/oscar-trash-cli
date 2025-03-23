@@ -4,6 +4,10 @@ use clap::{Parser, Subcommand};
 mod common;
 mod actions;
 
+fn show_cmd_not_yet_implemented() {
+    println!("This command has not yet been implemented");
+}
+
 #[derive(Subcommand, Debug)]
 enum OscarCommand {
     /// trash files and directories.
@@ -13,7 +17,12 @@ enum OscarCommand {
     Empty {},
 
     /// list trashed files.
-    List {},
+    #[clap(alias = "ls")]
+    List {
+        /// List trash contents recursively
+        #[arg(short, long, default_value_t=false)]
+        recursive: bool
+    },
 
     /// restore a trashed file. 
     Restore {
@@ -23,6 +32,7 @@ enum OscarCommand {
     },
 
     /// remove individual files from the trashcan. 
+    #[clap(alias = "rm")]
     Remove {},
 
     /// gets info on the contents of the trash, including total size, number of files, number of
@@ -47,18 +57,26 @@ fn main() {
 
     // TODO: implement each of these sub commands
     match args.cmd {
-        OscarCommand::Put {} => {},
-        OscarCommand::Empty {} => {},
-        OscarCommand::List {} => {
-            match trash_list() {
+        OscarCommand::Put {} => {
+            show_cmd_not_yet_implemented();
+        },
+        OscarCommand::Empty {} => {
+            show_cmd_not_yet_implemented();
+        },
+        OscarCommand::List { recursive} => {
+            match trash_list(recursive) {
                 Ok(_) => {},
                 Err(error) => println!("Error: {}", error)
             }
         },
-        OscarCommand::Restore { overwrite } => {},
-        OscarCommand::Remove {} => {},
-        OscarCommand::Info {  } => {
-
+        OscarCommand::Restore { overwrite } => {
+            show_cmd_not_yet_implemented();
+        },
+        OscarCommand::Remove {} => {
+            show_cmd_not_yet_implemented();
+        },
+        OscarCommand::Info { sizes_only } => {
+            show_cmd_not_yet_implemented();
         }
     }
 }
