@@ -10,13 +10,18 @@ fn show_cmd_not_yet_implemented() {
 
 #[derive(Subcommand, Debug)]
 enum OscarCommand {
-    /// trash files and directories.
-    Put {},
+    /// place a file or directories in the system trash
+    #[clap(alias = "p")]
+    Put {
+        /// path to the file or directory to be placed in the trash
+        path: String
+    },
 
-    /// empty the trashcan(s).
+    /// empty the system trash
+    #[clap(alias = "e")]
     Empty {},
 
-    /// list trashed files.
+    /// list all files or directories in the trash
     #[clap(alias = "ls")]
     List {
         /// List trash contents recursively
@@ -24,7 +29,8 @@ enum OscarCommand {
         recursive: bool
     },
 
-    /// restore a trashed file. 
+    /// restore a file/directory in the trash to its original location
+    #[clap(alias = "rs")]
     Restore {
         /// Overwrite the file currently on disk if there is a conflict
         #[arg(long, default_value_t=false)]
@@ -33,20 +39,15 @@ enum OscarCommand {
 
     /// remove individual files from the trashcan. 
     #[clap(alias = "rm")]
-    Remove {},
-
-    /// gets info on the contents of the trash, including total size, number of files, number of
-    /// directories, etc
-    Info {
-        #[arg(long, default_value_t=false)]
-        sizes_only: bool
-    }
+    Remove {
+        path: String
+    },
 }
 
 /// Command Line tool to manage your system's Freedesktop.org trash
 /// written in Rust.
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None, infer_subcommands = true)]
+#[command(version, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
     cmd: OscarCommand
@@ -57,13 +58,13 @@ fn main() {
 
     // TODO: implement each of these sub commands
     match args.cmd {
-        OscarCommand::Put {} => {
+        OscarCommand::Put { path } => {
             show_cmd_not_yet_implemented();
         },
         OscarCommand::Empty {} => {
             show_cmd_not_yet_implemented();
         },
-        OscarCommand::List { recursive} => {
+        OscarCommand::List { recursive } => {
             match trash_list(recursive) {
                 Ok(_) => {},
                 Err(error) => println!("Error: {}", error)
@@ -72,10 +73,7 @@ fn main() {
         OscarCommand::Restore { overwrite } => {
             show_cmd_not_yet_implemented();
         },
-        OscarCommand::Remove {} => {
-            show_cmd_not_yet_implemented();
-        },
-        OscarCommand::Info { sizes_only } => {
+        OscarCommand::Remove { path } => {
             show_cmd_not_yet_implemented();
         }
     }
