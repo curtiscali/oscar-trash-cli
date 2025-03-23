@@ -1,8 +1,9 @@
-use actions::trash_list::trash_list;
+use actions::{trash_list::trash_list, trash_put::trash_put};
 use clap::{Parser, Subcommand};
 
 mod common;
 mod actions;
+mod constants;
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
@@ -59,7 +60,10 @@ fn main() {
     // TODO: implement each of these sub commands
     match args.cmd {
         OscarCommand::Put { path } => {
-            show_cmd_not_yet_implemented();
+            match trash_put(&path) {
+                Ok(_) => {},
+                Err(error) => println!("Error: {}", error)
+            }
         },
         OscarCommand::Empty {} => {
             show_cmd_not_yet_implemented();
