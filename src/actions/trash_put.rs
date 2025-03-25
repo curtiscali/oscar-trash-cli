@@ -82,8 +82,6 @@ pub fn trash_put(path: &String) -> Result<()> {
                                     Ok(false) => Ok(()),
                                     Err(error) => Err(Error::new(ErrorKind::Other, error.to_string()))
                                 }
-
-                                
                             } else {
                                 Err(Error::new(ErrorKind::NotFound, format!("{} does not exist", path)))
                             }
