@@ -1,8 +1,8 @@
-use std::{fs::{read_dir, read_to_string}, io::Error, path::PathBuf};
+use std::{cmp::Ordering, fs::{read_dir, read_to_string}, io::{Error, Result}, path::PathBuf};
 use chrono::NaiveDateTime;
 use configparser::ini::Ini;
 use tabled::{settings::Style, Table, Tabled};
-use crate::common::*;
+use crate::{common::*, constants::*};
 
 #[derive(Tabled)]
 #[tabled(rename_all = "CamelCase")]
@@ -17,9 +17,9 @@ pub struct TrashInfo {
 impl TrashInfo {
     fn from_file(path: PathBuf) -> Option<TrashInfo> {
         let (trash_info_header, path_field, deletion_date_field) = (
-            String::from("Trash Info").to_lowercase(),
-            String::from("Path").to_lowercase(),
-            String::from("DeletionDate").to_lowercase()
+            String::from(TRASH_INFO_SECTION_HEADER).to_lowercase(),
+            String::from(TRASH_INFO_PATH_KEY).to_lowercase(),
+            String::from(TRASH_INFO_DELETION_DATE_KEY).to_lowercase()
         );
 
         match read_to_string(path) {
@@ -67,7 +67,7 @@ impl TrashInfo {
     }
 }
 
-pub fn get_home_trash_contents(recursive: bool) -> Result<Vec<TrashInfo>, Error> {
+pub fn get_home_trash_contents(recursive: bool) -> Result<Vec<TrashInfo>> {
     let mut trash_contents = vec![];
 
     match freedesktop_home_trash_info_dir() {
@@ -104,16 +104,26 @@ pub fn get_home_trash_contents(recursive: bool) -> Result<Vec<TrashInfo>, Error>
     }
 }
 
-pub fn trash_list(recursive: bool) -> Result<bool, Error> {
+pub fn trash_list(recursive: bool) -> Result<()> {
     match create_trash_dir_if_not_exists() {
         Ok(_) => {
             match get_home_trash_contents(recursive) {
-                Ok(trash_contents) => {
+                Ok(mut trash_contents) => {
+                    trash_contents.sort_by(|a, b| {
+                        if b.deletion_date < a.deletion_date {
+                            return Ordering::Less;
+                        } else if b.deletion_date > a.deletion_date {
+                            return Ordering::Greater;
+                        }
+
+                        return Ordering::Equal;
+                    });
+
                     let mut table = Table::new(trash_contents);
                     table.with(Style::modern_rounded());
 
                     print!("{}", table.to_string());
-                    Ok(true)
+                    Ok(())
                 },
                 Err(error) => Err(error)
             }
