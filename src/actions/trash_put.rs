@@ -1,10 +1,12 @@
 use std::{
     fs::{canonicalize, exists, rename}, 
-    io::{Error, ErrorKind, Result}, path::{Path, PathBuf}
+    io::{Error, ErrorKind, Result},
+    path::PathBuf
 };
 
 use chrono::Local;
 use configparser::ini::Ini;
+use inquire::Confirm;
 
 use crate::{common::*, constants::*};
 
@@ -55,21 +57,33 @@ pub fn trash_put(path: &String) -> Result<()> {
                     match exists(&os_absolute_path) {
                         Ok(exists) => {
                             if exists {
-                                match create_trash_info_entry(&os_absolute_path) {
-                                    Ok(_) => {
-                                        let trash_files_directory = freedesktop_home_trash_files_dir().unwrap();
-                                        match os_absolute_path.file_name() {
-                                            Some(filename) => {
-                                                match rename(path, trash_files_directory.join(filename)) {
-                                                    Ok(_) => Ok(()),
-                                                    Err(error) => Err(error)
+                                let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
+                                    .with_default(false)
+                                    .prompt();
+
+                                match should_place_in_trash_result {
+                                    Ok(true) => {
+                                        match create_trash_info_entry(&os_absolute_path) {
+                                            Ok(_) => {
+                                                let trash_files_directory = freedesktop_home_trash_files_dir().unwrap();
+                                                match os_absolute_path.file_name() {
+                                                    Some(filename) => {
+                                                        match rename(path, trash_files_directory.join(filename)) {
+                                                            Ok(_) => Ok(()),
+                                                            Err(error) => Err(error)
+                                                        }
+                                                    },
+                                                    None => Err(Error::new(ErrorKind::InvalidInput, format!("Cannot place {} in trash", path)))
                                                 }
                                             },
-                                            None => Err(Error::new(ErrorKind::InvalidInput, format!("Cannot place {} in trash", path)))
+                                            Err(error) => Err(error)
                                         }
                                     },
-                                    Err(error) => Err(error)
+                                    Ok(false) => Ok(()),
+                                    Err(error) => Err(Error::new(ErrorKind::Other, error.to_string()))
                                 }
+
+                                
                             } else {
                                 Err(Error::new(ErrorKind::NotFound, format!("{} does not exist", path)))
                             }
