@@ -109,15 +109,7 @@ pub fn trash_list(recursive: bool) -> Result<()> {
         Ok(_) => {
             match get_home_trash_contents(recursive) {
                 Ok(mut trash_contents) => {
-                    trash_contents.sort_by(|a, b| {
-                        if b.deletion_date < a.deletion_date {
-                            return Ordering::Less;
-                        } else if b.deletion_date > a.deletion_date {
-                            return Ordering::Greater;
-                        }
-
-                        return Ordering::Equal;
-                    });
+                    trash_contents.sort_by(|a, b| b.deletion_date.cmp(&a.deletion_date));
 
                     let mut table = Table::new(trash_contents);
                     table.with(Style::modern_rounded());

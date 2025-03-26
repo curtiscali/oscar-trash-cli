@@ -1,11 +1,20 @@
-use std::{fs::{create_dir, exists}, io::Error, path::PathBuf};
-use dirs::data_dir;
+use std::{
+    env::var,
+    fs::{create_dir, exists}, 
+    io::Error, 
+    path::{Path, PathBuf}
+};
 
 /// This function gets the home trash directory as defined in the Freedesktop.org spec: https://specifications.freedesktop.org/trash-spec/latest/
 pub fn freedesktop_home_trash_dir() -> Option<PathBuf> {
-    match data_dir() {
-        Some(path) => Some(path.join("Trash")),
-        None => None
+    match var("XDG_DATA_HOME") {
+        Ok(xdg_data_home) => Some(Path::new(&xdg_data_home).join("Trash").to_path_buf()),
+        Err(_) => {
+            match var("HOME") {
+                Ok(home) => Some(Path::new(&home).join(".local/share/Trash").to_path_buf()),
+                Err(_) => None
+            }
+        }
     }
 }
 
