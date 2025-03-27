@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fs::{read_dir, read_to_string}, io::{Error, Result}, path::PathBuf};
+use std::{fs::{read_dir, read_to_string}, io::{Error, Result}, path::PathBuf};
 use chrono::NaiveDateTime;
 use configparser::ini::Ini;
 use tabled::{settings::Style, Table, Tabled};
