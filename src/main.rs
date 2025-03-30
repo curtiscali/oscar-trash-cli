@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use actions::{trash_list::trash_list, trash_put::trash_put};
 use clap::{Parser, Subcommand};
 
@@ -54,31 +56,34 @@ struct Args {
     cmd: OscarCommand
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     // TODO: implement each of these sub commands
     match args.cmd {
         OscarCommand::Put { path } => {
             match trash_put(&path) {
-                Ok(_) => {},
-                Err(error) => println!("Error: {}", error)
+                Ok(_) => Ok(()),
+                Err(error) => Err(Box::new(error))
             }
         },
         OscarCommand::Empty {} => {
             show_cmd_not_yet_implemented();
+            Ok(())
         },
         OscarCommand::List { recursive } => {
             match trash_list(recursive) {
-                Ok(_) => {},
-                Err(error) => println!("Error: {}", error)
+                Ok(_) => Ok(()),
+                Err(error) => Err(Box::new(error))
             }
         },
         OscarCommand::Restore { overwrite } => {
             show_cmd_not_yet_implemented();
+            Ok(())
         },
         OscarCommand::Remove { path } => {
             show_cmd_not_yet_implemented();
+            Ok(())
         }
     }
 }
