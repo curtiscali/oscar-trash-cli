@@ -3,7 +3,7 @@ use std::error::Error;
 use actions::{
     trash_list::trash_list, 
     trash_put::trash_put, 
-    trash_rs::trash_restore
+    trash_restore::trash_restore
 };
 use clap::{Parser, Subcommand};
 
