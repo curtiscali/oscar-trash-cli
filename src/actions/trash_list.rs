@@ -48,7 +48,7 @@ impl TrashInfo {
 
                                     match deletion_date {
                                         Ok(date_result) => Some(TrashInfo { 
-                                            path: full_path.unwrap(), 
+                                            path: String::from(Path::new(&full_path.unwrap()).file_name().unwrap().to_str().unwrap()), 
                                             deletion_date: date_result
                                         }) ,
                                         Err(_) => None
