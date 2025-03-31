@@ -1,6 +1,10 @@
 use std::error::Error;
 
-use actions::{trash_list::trash_list, trash_put::trash_put};
+use actions::{
+    trash_list::trash_list, 
+    trash_put::trash_put, 
+    trash_rs::trash_restore
+};
 use clap::{Parser, Subcommand};
 
 mod common;
@@ -36,6 +40,9 @@ enum OscarCommand {
     /// restore a file/directory in the trash to its original location
     #[clap(alias = "rs")]
     Restore {
+        /// the path of the file, relative to the system trash, to restore its original location
+        path: String,
+
         /// Overwrite the file currently on disk if there is a conflict
         #[arg(long, default_value_t=false)]
         overwrite: bool
@@ -44,6 +51,7 @@ enum OscarCommand {
     /// remove individual files from the trashcan. 
     #[clap(alias = "rm")]
     Remove {
+        /// the path of the file to place in system trash
         path: String
     },
 }
@@ -78,9 +86,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(error) => Err(Box::new(error))
             }
         },
-        OscarCommand::Restore { overwrite } => {
-            show_cmd_not_yet_implemented();
-            Ok(())
+        OscarCommand::Restore { path, overwrite } => {
+            match trash_restore(path, overwrite) {
+                Ok(_) => Ok(()),
+                Err(error) => Err(Box::new(error))
+            }
         },
         OscarCommand::Remove { path } => {
             show_cmd_not_yet_implemented();
