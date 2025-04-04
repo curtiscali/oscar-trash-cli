@@ -6,10 +6,13 @@ use actions::{
     trash_restore::trash_restore
 };
 use clap::{Parser, Subcommand};
+use common::get_home_trash_contents;
+use inquire::Select;
 
 mod common;
 mod actions;
 mod constants;
+mod trash_info;
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
@@ -40,7 +43,7 @@ enum OscarCommand {
     #[clap(alias = "rs")]
     Restore {
         /// the path of the file, relative to the system trash, to restore its original location
-        path: String,
+        path: Option<String>,
 
         /// Overwrite the file currently on disk if there is a conflict
         #[arg(long, default_value_t=false)]
@@ -86,9 +89,33 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         },
         OscarCommand::Restore { path, overwrite } => {
-            match trash_restore(path, overwrite) {
-                Ok(_) => Ok(()),
-                Err(error) => Err(Box::new(error))
+            match path {
+                Some(item_to_restore) => {
+                    match trash_restore(item_to_restore, overwrite) {
+                        Ok(_) => Ok(()),
+                        Err(error) => Err(Box::new(error))
+                    }
+                },
+                None => {
+                    match get_home_trash_contents() {
+                        Ok(trash_contents) => {
+                            let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
+
+                            match user_response {
+                                Ok(selected_item) => {
+                                    match trash_restore(selected_item.path, overwrite) {
+                                        Ok(_) => Ok(()),
+                                        Err(error) => Err(Box::new(error))
+                                    }
+                                },
+                                Err(error) => Err(Box::new(error))
+                            }
+
+                            
+                        },
+                        Err(error) => Err(Box::new(error))
+                    }
+                }
             }
         },
         OscarCommand::Remove { path } => {

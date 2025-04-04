@@ -1,9 +1,11 @@
 use std::{
-    env::var, 
-    fs::{create_dir, exists}, 
-    io::Error,
+    env::var,
+    fs::{create_dir, exists, read_dir}, 
+    io::{Error, Result}, 
     path::{Path, PathBuf}
 };
+
+use crate::trash_info::TrashInfo;
 
 /// This function gets the home trash directory as defined in the Freedesktop.org spec: https://specifications.freedesktop.org/trash-spec/latest/
 pub fn freedesktop_home_trash_dir() -> Option<PathBuf> {
@@ -32,7 +34,7 @@ pub fn freedesktop_home_trash_info_dir() -> Option<PathBuf> {
     }
 }
 
-pub fn create_trash_dir_if_not_exists() -> Result<bool, Error> {
+pub fn create_trash_dir_if_not_exists() -> Result<bool> {
     match freedesktop_home_trash_dir() {
         Some(home_trash_dir) => {
             match exists(home_trash_dir.clone()) {
@@ -65,6 +67,42 @@ pub fn create_trash_dir_if_not_exists() -> Result<bool, Error> {
                 },
                 Err(error) => return Err(error)
             } 
+        },
+        None => Err(
+            Error::new(
+                std::io::ErrorKind::Other, 
+                "Unable to determine the path for the home trash directory."
+            )
+        )
+    }
+}
+
+pub fn get_home_trash_contents() -> Result<Vec<TrashInfo>> {
+    let mut trash_contents = vec![];
+
+    match freedesktop_home_trash_info_dir() {
+        Some(info_path) => {
+            match read_dir(info_path) {
+                Ok(contents) => {
+                    for result in contents {
+                        match result {
+                            Ok(entry) => {
+                                let path = entry.path();
+                                if path.is_file() {
+                                    match TrashInfo::from_file(path) {
+                                        Some(trash_info) => trash_contents.push(trash_info),
+                                        None => continue
+                                    }
+                                }
+                            },
+                            Err(_) => continue
+                        }
+                    }
+
+                    Ok(trash_contents)
+                },
+                Err(error) => Err(error)
+            }
         },
         None => Err(
             Error::new(
