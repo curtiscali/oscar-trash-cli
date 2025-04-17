@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use configparser::ini::Ini;
 use tabled::{settings::Style, Table, Tabled};
 use termtree::Tree;
-use crate::{common::*, constants::*};
+use crate::{common::*, constants::*, string_encode::decode_filename};
 
 #[derive(Tabled)]
 #[tabled(rename_all = "CamelCase")]
@@ -48,7 +48,13 @@ impl TrashInfo {
 
                                     match deletion_date {
                                         Ok(date_result) => Some(TrashInfo { 
-                                            path: String::from(Path::new(&full_path.unwrap()).file_name().unwrap().to_str().unwrap()), 
+                                            path: decode_filename(
+                                                Path::new(&full_path.unwrap())
+                                                    .file_name()
+                                                    .unwrap()
+                                                    .to_str()
+                                                    .unwrap()
+                                            ),
                                             deletion_date: date_result
                                         }) ,
                                         Err(_) => None

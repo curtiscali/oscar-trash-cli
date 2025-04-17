@@ -8,7 +8,7 @@ use chrono::Local;
 use configparser::ini::Ini;
 use inquire::Confirm;
 
-use crate::{common::*, constants::*};
+use crate::{common::*, constants::*, string_encode::encode_filename};
 
 fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
     match create_trash_dir_if_not_exists() {
@@ -21,7 +21,7 @@ fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
             trash_info_ini.set(
                 &trash_info_section_header, 
                 TRASH_INFO_PATH_KEY, 
-                Some(String::from(path.to_str().unwrap()))
+                Some(String::from(encode_filename(path.to_str().unwrap())))
             );
 
             trash_info_ini.set(

@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 mod common;
 mod actions;
 mod constants;
+mod string_encode;
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
