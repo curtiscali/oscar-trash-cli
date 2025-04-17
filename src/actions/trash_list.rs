@@ -6,7 +6,7 @@ use std::{
 
 use tabled::{settings::Style, Table};
 use termtree::Tree;
-use crate::{common::*, constants::*, string_encode::decode_filename};
+use crate::common::*;
 
 fn files_tree_label<P: AsRef<Path>>(p: P) -> String {
     let name = p.as_ref()

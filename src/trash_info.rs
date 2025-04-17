@@ -2,7 +2,7 @@ use std::{fmt::Display, fs::read_to_string, path::{Path, PathBuf}};
 use chrono::NaiveDateTime;
 use configparser::ini::Ini;
 use tabled::Tabled;
-use crate::constants::*;
+use crate::{constants::*, string_encode::decode_filename};
 
 #[derive(Tabled)]
 #[tabled(rename_all = "CamelCase")]
@@ -47,12 +47,13 @@ impl TrashInfo {
 
                                     match deletion_date {
                                         Ok(date_result) => Some(TrashInfo { 
-                                            path: Path::new(&full_path.unwrap())
-                                                .file_name()
-                                                .unwrap()
-                                                .to_str()
-                                                .unwrap()
-                                                .replace("%20", " "), 
+                                            path: decode_filename(
+                                                Path::new(&full_path.unwrap())
+                                                    .file_name()
+                                                    .unwrap()
+                                                    .to_str()
+                                                    .unwrap()
+                                            ), 
                                             deletion_date: date_result
                                         }) ,
                                         Err(_) => None
