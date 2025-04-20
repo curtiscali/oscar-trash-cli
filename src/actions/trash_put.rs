@@ -1,7 +1,7 @@
 use std::{
     fs::{canonicalize, exists, rename}, 
     io::{Error, ErrorKind, Result},
-    path::PathBuf
+    path::{Path, PathBuf}
 };
 
 use chrono::Local;
@@ -34,8 +34,13 @@ fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
             // write contents of trash_info_ini to the file
             match path.file_name() {
                 Some(filename) => {
+                    let extension = Path::new(filename).extension();
+
                     let trash_info_directory = freedesktop_home_trash_info_dir().unwrap();
-                    let trash_info_ini_path = trash_info_directory.join(filename).with_extension(TRASH_INFO_FILE_EXTENSION);
+                    let trash_info_ini_path = trash_info_directory.join(filename).with_extension(match extension {
+                        Some(extension) => format!("{}.{}", extension.to_str().unwrap(), TRASH_INFO_FILE_EXTENSION),
+                        None => String::from(TRASH_INFO_FILE_EXTENSION)
+                    });
 
                     match trash_info_ini.write(trash_info_ini_path) {
                         Ok(_) => Ok(()),

@@ -7,7 +7,7 @@ use actions::{
 };
 use clap::{Parser, Subcommand};
 use common::get_home_trash_contents;
-use inquire::Select;
+use inquire::{InquireError, Select};
 
 mod common;
 mod actions;
@@ -44,7 +44,7 @@ enum OscarCommand {
     #[clap(alias = "rs")]
     Restore {
         /// the path of the file, relative to the system trash, to restore its original location
-        path: Option<String>,
+        //path: Option<String>,
 
         /// Overwrite the file currently on disk if there is a conflict
         #[arg(long, default_value_t=false)]
@@ -89,34 +89,28 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(error) => Err(Box::new(error))
             }
         },
-        OscarCommand::Restore { path, overwrite } => {
-            match path {
-                Some(item_to_restore) => {
-                    match trash_restore(item_to_restore, overwrite) {
-                        Ok(_) => Ok(()),
-                        Err(error) => Err(Box::new(error))
-                    }
-                },
-                None => {
-                    match get_home_trash_contents() {
-                        Ok(trash_contents) => {
-                            let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
+        OscarCommand::Restore { overwrite } => {
+            match get_home_trash_contents() {
+                Ok(trash_contents) => {
+                    let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
 
-                            match user_response {
-                                Ok(selected_item) => {
-                                    match trash_restore(selected_item.path, overwrite) {
-                                        Ok(_) => Ok(()),
-                                        Err(error) => Err(Box::new(error))
-                                    }
-                                },
+                    match user_response {
+                        Ok(selected_item) => {
+                            match trash_restore(&selected_item, overwrite) {
+                                Ok(_) => Ok(()),
                                 Err(error) => Err(Box::new(error))
                             }
-
-                            
                         },
-                        Err(error) => Err(Box::new(error))
+                        Err(error) => {
+                            match error {
+                                InquireError::OperationCanceled => Ok(()),
+                                InquireError::OperationInterrupted => Ok(()),
+                                _ => Err(Box::new(error))
+                            }
+                        }
                     }
-                }
+                },
+                Err(error) => Err(Box::new(error))
             }
         },
         OscarCommand::Remove { path } => {

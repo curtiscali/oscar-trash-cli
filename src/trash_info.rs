@@ -4,9 +4,16 @@ use configparser::ini::Ini;
 use tabled::Tabled;
 use crate::{constants::*, string_encode::decode_filename};
 
+fn from_option(s: &Option<String>) -> String {
+    s.clone().unwrap()
+}
+
 #[derive(Tabled)]
 #[tabled(rename_all = "CamelCase")]
 pub struct TrashInfo {
+    #[tabled(skip)]
+    pub full_path: String,
+
     #[tabled(rename = "Path")]
     pub path: String,
 
@@ -47,8 +54,9 @@ impl TrashInfo {
 
                                     match deletion_date {
                                         Ok(date_result) => Some(TrashInfo { 
+                                            full_path: from_option(&full_path),
                                             path: decode_filename(
-                                                Path::new(&full_path.unwrap())
+                                                Path::new(&from_option(&full_path))
                                                     .file_name()
                                                     .unwrap()
                                                     .to_str()
