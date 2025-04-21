@@ -15,7 +15,7 @@ fn remove_trash_entry(trash_entry: &TrashInfo) -> Result<()> {
     let full_trash_info_path = with_trashinfo_extension(&trash_info_dir.join(&trash_entry.path));
     let full_trash_item_path = trash_files_dir.join(&trash_entry.path);
 
-    match full_trash_info_path.metadata() {
+    match full_trash_item_path.metadata() {
         Ok(metadata) => {
             if metadata.is_dir() {
                 match remove_dir_all(&full_trash_item_path) {
