@@ -33,8 +33,6 @@ pub fn trash_restore(trash_entry: &TrashInfo, overwrite: bool) -> Result<()> {
 
             let full_trash_file_path = trash_files_dir.join(&trash_entry.path);
 
-            println!("{}", full_trash_file_path.to_str().unwrap());
-
             match exists(full_trash_file_path) {
                 Ok(true) => {
                     match exists(&trash_entry.full_path) {
