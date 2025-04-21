@@ -3,6 +3,7 @@ use std::error::Error;
 use actions::{
     trash_list::trash_list, 
     trash_put::trash_put, 
+    trash_remove::trash_remove, 
     trash_restore::trash_restore
 };
 use clap::{Parser, Subcommand};
@@ -53,10 +54,7 @@ enum OscarCommand {
 
     /// remove individual files from the trashcan. 
     #[clap(alias = "rm")]
-    Remove {
-        /// the path of the file to place in system trash
-        path: String
-    },
+    Remove {},
 }
 
 /// Command Line tool to manage your system's Freedesktop.org trash
@@ -113,9 +111,29 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(error) => Err(Box::new(error))
             }
         },
-        OscarCommand::Remove { path } => {
-            show_cmd_not_yet_implemented();
-            Ok(())
+        OscarCommand::Remove {} => {
+            match get_home_trash_contents() {
+                Ok(trash_contents) => {
+                    let user_response = Select::new("Select an item from the trash to remove", trash_contents).prompt();
+
+                    match user_response {
+                        Ok(selected_item) => {
+                            match trash_remove(&selected_item) {
+                                Ok(_) => Ok(()),
+                                Err(error) => Err(Box::new(error))
+                            }
+                        },
+                        Err(error) => {
+                            match error {
+                                InquireError::OperationCanceled => Ok(()),
+                                InquireError::OperationInterrupted => Ok(()),
+                                _ => Err(Box::new(error))
+                            }
+                        }
+                    }
+                },
+                Err(error) => Err(Box::new(error))
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 use std::{
-    fs::{canonicalize, exists, remove_file, rename}, 
-    io::{Error, ErrorKind, Result}, path::Path
+    fs::{exists, remove_file, rename}, 
+    io::{Error, ErrorKind, Result},
+    path::Path
 };
 use crate::{common::*, constants::TRASH_INFO_FILE_EXTENSION, trash_info::TrashInfo};
 
