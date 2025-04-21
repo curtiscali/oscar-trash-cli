@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf}
 };
 
+use crate::constants::TRASH_INFO_FILE_EXTENSION;
 use crate::trash_info::TrashInfo;
 
 /// This function gets the home trash directory as defined in the Freedesktop.org spec: https://specifications.freedesktop.org/trash-spec/latest/
@@ -32,6 +33,13 @@ pub fn freedesktop_home_trash_info_dir() -> Option<PathBuf> {
         Some(home_trash_dir) => Some(home_trash_dir.join("info")),
         None => None
     }
+}
+
+pub fn with_trashinfo_extension(p: &PathBuf) -> PathBuf {
+    p.with_extension(match p.extension() {
+        Some(extension) => format!("{}.{}", extension.to_str().unwrap(), TRASH_INFO_FILE_EXTENSION),
+        None => String::from(TRASH_INFO_FILE_EXTENSION)
+    })
 }
 
 pub fn create_trash_dir_if_not_exists() -> Result<bool> {

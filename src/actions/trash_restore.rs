@@ -1,8 +1,8 @@
 use std::{
-    fs::{canonicalize, exists, remove_file, rename}, 
-    io::{Error, ErrorKind, Result}, path::Path
+    fs::{exists, remove_file, rename}, 
+    io::{Error, ErrorKind, Result}
 };
-use crate::{common::*, constants::TRASH_INFO_FILE_EXTENSION, trash_info::TrashInfo};
+use crate::{common::*, trash_info::TrashInfo};
 
 fn restore_from_trash(trash_entry: &TrashInfo) -> Result<()> {
     let (trash_info_dir, trash_files_dir) = (
@@ -10,14 +10,7 @@ fn restore_from_trash(trash_entry: &TrashInfo) -> Result<()> {
         freedesktop_home_trash_files_dir().unwrap()
     );
 
-    let original_file = Path::new(&trash_entry.path);
-
-    let full_trash_info_path = trash_info_dir.join(&trash_entry.path)
-        .with_extension(match original_file.extension() {
-            Some(extension) => format!("{}.{}", extension.to_str().unwrap(), TRASH_INFO_FILE_EXTENSION),
-            None => String::from(TRASH_INFO_FILE_EXTENSION)
-        });
-
+    let full_trash_info_path = with_trashinfo_extension(&trash_info_dir.join(&trash_entry.path));
     let full_trash_item_path = trash_files_dir.join(&trash_entry.path);
 
     match rename(&full_trash_item_path, &trash_entry.full_path) {

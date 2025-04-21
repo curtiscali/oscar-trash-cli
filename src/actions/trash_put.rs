@@ -1,12 +1,12 @@
 use std::{
     fs::{canonicalize, exists, rename}, 
     io::{Error, ErrorKind, Result},
-    path::{Path, PathBuf}
+    path::PathBuf
 };
 
 use chrono::Local;
 use configparser::ini::Ini;
-use inquire::Confirm;
+use inquire::{Confirm, InquireError};
 
 use crate::{common::*, constants::*, string_encode::encode_filename};
 
@@ -34,13 +34,8 @@ fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
             // write contents of trash_info_ini to the file
             match path.file_name() {
                 Some(filename) => {
-                    let extension = Path::new(filename).extension();
-
                     let trash_info_directory = freedesktop_home_trash_info_dir().unwrap();
-                    let trash_info_ini_path = trash_info_directory.join(filename).with_extension(match extension {
-                        Some(extension) => format!("{}.{}", extension.to_str().unwrap(), TRASH_INFO_FILE_EXTENSION),
-                        None => String::from(TRASH_INFO_FILE_EXTENSION)
-                    });
+                    let trash_info_ini_path = with_trashinfo_extension(&trash_info_directory.join(filename));
 
                     match trash_info_ini.write(trash_info_ini_path) {
                         Ok(_) => Ok(()),
@@ -85,7 +80,11 @@ pub fn trash_put(path: &String) -> Result<()> {
                                         }
                                     },
                                     Ok(false) => Ok(()),
-                                    Err(error) => Err(Error::new(ErrorKind::Other, error.to_string()))
+                                    Err(error) => match error {
+                                        InquireError::OperationCanceled => Ok(()),
+                                        InquireError::OperationInterrupted => Ok(()),
+                                        _ => Err(Error::new(ErrorKind::Other, error.to_string()))
+                                    }
                                 }
                             } else {
                                 Err(Error::new(ErrorKind::NotFound, format!("{} does not exist", path)))
