@@ -4,7 +4,8 @@ use oscar::actions::{
     trash_list::trash_list, 
     trash_put::trash_put, 
     trash_remove::trash_remove, 
-    trash_restore::trash_restore
+    trash_restore::trash_restore,
+    trash_empty::trash_empty
 };
 use clap::{Parser, Subcommand};
 use oscar::common::get_home_trash_contents;
@@ -84,8 +85,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         },
         OscarCommand::Empty {} => {
-            show_cmd_not_yet_implemented();
-            Ok(())
+            let should_empty_trash_result = Confirm::new("Are you sure you want to empty the trash? This action is irreversible.")
+                .with_default(false)
+                .prompt();
+
+            match should_empty_trash_result {
+                Ok(true) => match trash_empty() {
+                    Ok(_) => Ok(()),
+                    Err(error) => Err(Box::new(error))
+                },
+                Ok(false) => Ok(()),
+                Err(error) => {
+                    match error {
+                        InquireError::OperationCanceled => Ok(()),
+                        InquireError::OperationInterrupted => Ok(()),
+                        _ => Err(Box::new(error))
+                    }
+                }
+            }
         },
         OscarCommand::List { recursive } => {
             match trash_list(recursive) {
