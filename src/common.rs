@@ -1,6 +1,6 @@
 use std::{
     env::var,
-    fs::{create_dir, exists, read_dir}, 
+    fs::{create_dir_all, exists, read_dir}, 
     io::{Error, Result}, 
     path::{Path, PathBuf}
 };
@@ -42,46 +42,55 @@ pub fn with_trashinfo_extension(p: &PathBuf) -> PathBuf {
     })
 }
 
-pub fn create_trash_dir_if_not_exists() -> Result<bool> {
-    match freedesktop_home_trash_dir() {
-        Some(home_trash_dir) => {
-            match exists(home_trash_dir.clone()) {
-                Ok(dir_exists) => {
-                    if dir_exists {
-                        return Ok(false);
-                    } else {
-                        match create_dir(home_trash_dir.clone()) {
-                            Ok(_) => {
-                                // Unwrap is safe here because the above home_trash_dir()
-                                // call succeeded, which means a path can be determined
-                                let (files_dir, info_dir) = (
-                                    freedesktop_home_trash_files_dir().unwrap(),
-                                    freedesktop_home_trash_info_dir().unwrap()
-                                );
-                               
-                                match create_dir(files_dir) {
-                                    Ok(_) => {
-                                        match create_dir(info_dir) {
-                                            Ok(_) => return Ok(true),
-                                            Err(error) => return Err(error)
-                                        }
-                                    },
-                                    Err(error) => return Err(error)
-                                }
-                            },
-                            Err(error) => return Err(error)
-                        }
-                    }
-                },
-                Err(error) => return Err(error)
-            } 
-        },
-        None => Err(
-            Error::new(
-                std::io::ErrorKind::Other, 
-                "Unable to determine the path for the home trash directory."
-            )
+fn create_home_trash_info_dir_if_not_exists() -> Result<bool>{
+    if let Some(home_trash_info_dir) = freedesktop_home_trash_info_dir() {
+        return match exists(&home_trash_info_dir) {
+            Ok(true) => Ok(false), // dir already exists & no action is needed, so we send false
+            Ok(false) => match create_dir_all(&home_trash_info_dir) {
+                Ok(_) => Ok(true),
+                Err(error) => Err(error)
+            },
+            Err(error) => Err(error)
+        };
+    }
+
+    return Err(
+        Error::new(
+            std::io::ErrorKind::Other, 
+            "Unable to determine the path for the home trash info directory."
         )
+    );
+}
+
+fn create_home_trash_files_dir_if_not_exists() -> Result<bool>{
+    if let Some(home_trash_files_dir) = freedesktop_home_trash_files_dir() {
+        return match exists(&home_trash_files_dir) {
+            Ok(true) => Ok(false), // dir already exists & no action is needed, so we send false
+            Ok(false) => match create_dir_all(&home_trash_files_dir) {
+                Ok(_) => Ok(true),
+                Err(error) => Err(error)
+            },
+            Err(error) => Err(error)
+        };
+    }
+
+    return Err(
+        Error::new(
+            std::io::ErrorKind::Other, 
+            "Unable to determine the path for the home trash files directory."
+        )
+    );
+}
+
+pub fn create_trash_dir_if_not_exists() -> Result<bool> {
+    match create_home_trash_info_dir_if_not_exists() {
+        Ok(was_info_dir_created) => {
+            match create_home_trash_files_dir_if_not_exists() {
+                Ok(was_files_dir_created) => Ok(was_info_dir_created && was_files_dir_created),
+                Err(error) => Err(error)
+            }
+        },
+        Err(error) => Err(error)
     }
 }
 
