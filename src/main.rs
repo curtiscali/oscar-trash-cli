@@ -1,20 +1,14 @@
 use std::error::Error;
 
-use actions::{
+use oscar::actions::{
     trash_list::trash_list, 
     trash_put::trash_put, 
     trash_remove::trash_remove, 
     trash_restore::trash_restore
 };
 use clap::{Parser, Subcommand};
-use common::get_home_trash_contents;
+use oscar::common::get_home_trash_contents;
 use inquire::{InquireError, Select};
-
-mod common;
-mod actions;
-mod constants;
-mod string_encode;
-mod trash_info;
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
