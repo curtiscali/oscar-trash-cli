@@ -10,3 +10,6 @@ configparser = "3.1.0"
 inquire = { version = "0.7.5", features = ["date"] }
 tabled = "0.17.0"
 termtree = "0.5.1"
+
+[dev-dependencies]
+serial_test = "3.2.0"
