@@ -1,6 +1,7 @@
 use std::{
+    env::{set_var, remove_var, temp_dir}, 
     fs::{create_dir_all, exists}, 
-    path::Path,
+    path::Path, 
     process::Command
 };
 use chrono::NaiveDate;
@@ -10,6 +11,18 @@ use serial_test::{parallel, serial};
 use common::*;
 
 mod common;
+
+fn remove_xdg_data_home() {
+    remove_var("XDG_DATA_HOME");
+}
+
+fn setup_home() {
+    set_var("HOME", temp_dir());
+}
+
+fn remove_home() {
+    remove_var("HOME");
+}
 
 #[test]
 #[serial(env_var)]

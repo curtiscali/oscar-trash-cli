@@ -8,7 +8,7 @@ use oscar::actions::{
 };
 use clap::{Parser, Subcommand};
 use oscar::common::get_home_trash_contents;
-use inquire::{InquireError, Select};
+use inquire::{Confirm, InquireError, Select};
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
@@ -66,9 +66,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     // TODO: implement each of these sub commands
     match args.cmd {
         OscarCommand::Put { path } => {
-            match trash_put(&path) {
-                Ok(_) => Ok(()),
-                Err(error) => Err(Box::new(error))
+            let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
+                .with_default(false)
+                .prompt();
+
+            match should_place_in_trash_result {
+                Ok(true) => match trash_put(&path) {
+                    Ok(_) => Ok(()),
+                    Err(error) => Err(Box::new(error))
+                },
+                Ok(false) => Ok(()),
+                Err(error) => match error {
+                    InquireError::OperationCanceled => Ok(()),
+                    InquireError::OperationInterrupted => Ok(()),
+                    _ => Err(Box::new(error))
+                }
             }
         },
         OscarCommand::Empty {} => {
