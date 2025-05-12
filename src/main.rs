@@ -124,9 +124,22 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     match user_response {
                         Ok(selected_item) => {
-                            match trash_remove(&selected_item) {
-                                Ok(_) => Ok(()),
-                                Err(error) => Err(Box::new(error))
+                            let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
+                            let should_rm_from_trash_result = Confirm::new(&message.as_str())
+                                .with_default(false)
+                                .prompt();
+
+                            match should_rm_from_trash_result {
+                                Ok(true) => match trash_remove(&selected_item) {
+                                    Ok(_) => Ok(()),
+                                    Err(error) => Err(Box::new(error))
+                                },
+                                Ok(false) => Ok(()),
+                                Err(error) => match error {
+                                    InquireError::OperationCanceled => Ok(()),
+                                    InquireError::OperationInterrupted => Ok(()),
+                                    _ => Err(Box::new(error))
+                                }
                             }
                         },
                         Err(error) => {

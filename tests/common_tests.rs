@@ -4,7 +4,7 @@ use std::{
     path::Path, 
     process::Command
 };
-use chrono::NaiveDate;
+
 use configparser::ini::Ini;
 use oscar::{common::*, trash_info::TrashInfo};
 use serial_test::{parallel, serial};
@@ -133,7 +133,7 @@ fn test_create_home_trash_files_dir_if_not_exists() {
 #[test]
 #[serial(env_var, fs)]
 fn test_get_home_trash_contents() {
-    let test_file = String::from("test.txt");
+    let test_file = test_file();
 
     setup_xdg_data_home();
     if let Some(home_trash_info_dir) = freedesktop_home_trash_info_dir() {
@@ -155,14 +155,13 @@ fn test_get_home_trash_contents() {
                             if let Ok(trash_contents) = get_home_trash_contents() {
                                 assert_eq!(
                                     trash_contents, 
-                                    vec![TrashInfo { 
-                                        path: test_file.clone(), 
-                                        full_path: format!("/tmp/{}", test_file.clone()), 
-                                        deletion_date: NaiveDate::from_ymd_opt(2004, 8, 31)
-                                            .unwrap()
-                                            .and_hms_opt(22, 32, 8)
-                                            .unwrap()
-                                    }]
+                                    vec![
+                                        TrashInfo { 
+                                            path: test_file.clone(), 
+                                            full_path: format!("/tmp/{}", test_file.clone()), 
+                                            deletion_date: test_file_date()
+                                        }
+                                    ]
                                 );
                                 remove_trash_file_hierarchy();
                             } else {
