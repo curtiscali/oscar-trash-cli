@@ -82,7 +82,7 @@ pub fn create_home_trash_files_dir_if_not_exists() -> Result<bool>{
     );
 }
 
-pub fn create_trash_dir_if_not_exists() -> Result<bool> {
+pub fn create_home_trash_dir_if_not_exists() -> Result<bool> {
     match create_home_trash_info_dir_if_not_exists() {
         Ok(was_info_dir_created) => {
             match create_home_trash_files_dir_if_not_exists() {

@@ -1,8 +1,24 @@
-use std::{fs::exists, io::{Error, ErrorKind, Result}, path::Path, process::Command};
+use std::{
+    fs::exists, 
+    io::{
+        Error, 
+        ErrorKind, 
+        Result
+    },
+    path::Path, 
+    process::Command
+};
 
 use common::{setup_xdg_data_home, test_file_trash_entry};
 use configparser::ini::Ini;
-use oscar::{actions::trash_remove::trash_remove, common::{freedesktop_home_trash_files_dir, freedesktop_home_trash_info_dir, with_trashinfo_extension}};
+use oscar::{
+    actions::trash_remove::trash_remove, 
+    common::{
+        freedesktop_home_trash_files_dir, 
+        freedesktop_home_trash_info_dir, 
+        with_trashinfo_extension
+    }
+};
 use serial_test::serial;
 
 mod common;

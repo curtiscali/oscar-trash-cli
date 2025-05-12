@@ -33,7 +33,7 @@ fn remove_trash_entry(trash_entry: &TrashInfo) -> Result<()> {
 }
 
 pub fn trash_remove(trash_entry: &TrashInfo) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             let trash_files_dir = freedesktop_home_trash_files_dir().unwrap();
             let full_trash_file_path = trash_files_dir.join(&trash_entry.path);

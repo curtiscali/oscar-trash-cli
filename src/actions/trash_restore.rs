@@ -20,7 +20,7 @@ fn restore_from_trash(trash_entry: &TrashInfo) -> Result<()> {
 }
 
 pub fn trash_restore(trash_entry: &TrashInfo, overwrite: bool) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             let trash_files_dir = freedesktop_home_trash_files_dir().unwrap();
 

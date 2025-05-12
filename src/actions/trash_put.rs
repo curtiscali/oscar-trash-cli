@@ -10,7 +10,7 @@ use configparser::ini::Ini;
 use crate::{common::*, constants::*, string_encode::encode_filename};
 
 fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             let trash_info_section_header = String::from(TRASH_INFO_SECTION_HEADER);
             let mut trash_info_ini = Ini::new();
@@ -49,7 +49,7 @@ fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
 }
 
 pub fn trash_put(path: &String) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             match canonicalize(path) {
                 Ok(os_absolute_path) => {

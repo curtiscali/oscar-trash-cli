@@ -41,7 +41,7 @@ fn files_tree<P: AsRef<Path>>(p: P) -> Result<Tree<String>> {
 }
 
 pub fn trash_list(recursive: bool) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             if recursive {
                 let trash_files_dir = freedesktop_home_trash_files_dir().unwrap();
