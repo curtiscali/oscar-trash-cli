@@ -26,14 +26,15 @@ pub fn test_file_date() -> NaiveDateTime {
         .unwrap()
 }
 
-pub fn test_file() -> String {
-    String::from("test.txt")
+pub fn test_file(is_file: bool) -> String {
+    format!("test{}", if is_file { ".txt" } else { "" })
+    //String::from("test.txt")
 }
 
-pub fn test_file_trash_entry() -> TrashInfo {
+pub fn test_file_trash_entry(is_file: bool) -> TrashInfo {
     TrashInfo {
-        path: test_file(), 
-        full_path: format!("/tmp/{}", test_file()), 
+        path: test_file(is_file), 
+        full_path: format!("/tmp/{}", test_file(is_file)), 
         deletion_date: test_file_date()
     }
 }

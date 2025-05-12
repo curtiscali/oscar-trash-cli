@@ -39,8 +39,12 @@ fn create_home_trash_hierarchy() -> Result<()> {
     }
 }
 
-fn setup_home_trash() -> Result<()> {
-    let test_file = String::from("test.txt");
+fn setup_home_trash(is_file: bool) -> Result<()> {
+    let test_file = if is_file { 
+        String::from("test.txt") 
+    } else { 
+        String::from("test") 
+    };
 
     match create_home_trash_hierarchy() {
         Ok(_) => {
@@ -49,10 +53,17 @@ fn setup_home_trash() -> Result<()> {
                 freedesktop_home_trash_files_dir().unwrap()
             );
 
-            let create_trash_txt_file = Command::new("touch")
-                .arg(&trash_files_dir.join(&test_file))
-                .output();
-            if let Ok(_) = create_trash_txt_file {
+            let create_trash_test_file = if is_file {
+                Command::new("touch")
+                    .arg(&trash_files_dir.join(&test_file))
+                    .output()
+            } else {
+                Command::new("mkdir")
+                    .arg("-p")
+                    .arg(&trash_files_dir.join(&test_file))
+                    .output()
+            };
+            if let Ok(_) = create_trash_test_file {
                 let mut trashinfo = Ini::new();
                 if let Ok(_) = trashinfo.read(format!("[Trash Info]
                     Path=/tmp/{test_file}
@@ -79,14 +90,49 @@ fn setup_home_trash() -> Result<()> {
 #[test]
 #[serial]
 fn test_trash_rm() -> Result<()> {
-    match setup_home_trash() {
+    const IS_TRASH_ENTRY_FILE: bool = true;
+
+    match setup_home_trash(IS_TRASH_ENTRY_FILE) {
         Ok(_) => {
             let (trash_info_dir, trash_files_dir) = (
                 freedesktop_home_trash_info_dir().unwrap(),
                 freedesktop_home_trash_files_dir().unwrap()
             );
 
-            let trash_entry_to_rm = test_file_trash_entry();
+            let trash_entry_to_rm = test_file_trash_entry(IS_TRASH_ENTRY_FILE);
+
+            match trash_remove(&trash_entry_to_rm) {
+                Ok(_) => {
+                    match exists(&trash_info_dir.join(with_trashinfo_extension(&Path::new(&trash_entry_to_rm.path).to_path_buf()))) {
+                        Ok(true) => Err(Error::new(ErrorKind::Other, "trash info not deleted")),
+                        Ok(false) => match exists(&trash_files_dir.join(&trash_entry_to_rm.path)) {
+                            Ok(false) => Ok(()),
+                            Ok(true) => Err(Error::new(ErrorKind::Other, "trash file not deleted")),
+                            Err(err) => Err(err)
+                        },
+                        Err(err) => Err(err)
+                    }
+                }
+                Err(err) => Err(err)
+            }
+        },
+        Err(error) => Err(error)
+    }
+}
+
+#[test]
+#[serial]
+fn test_trash_rmdir() -> Result<()> {
+    const IS_TRASH_ENTRY_FILE: bool = false;
+
+    match setup_home_trash(IS_TRASH_ENTRY_FILE) {
+        Ok(_) => {
+            let (trash_info_dir, trash_files_dir) = (
+                freedesktop_home_trash_info_dir().unwrap(),
+                freedesktop_home_trash_files_dir().unwrap()
+            );
+
+            let trash_entry_to_rm = test_file_trash_entry(IS_TRASH_ENTRY_FILE);
 
             match trash_remove(&trash_entry_to_rm) {
                 Ok(_) => {

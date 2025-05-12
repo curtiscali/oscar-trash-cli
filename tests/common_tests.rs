@@ -133,7 +133,7 @@ fn test_create_home_trash_files_dir_if_not_exists() {
 #[test]
 #[serial(env_var, fs)]
 fn test_get_home_trash_contents() {
-    let test_file = test_file();
+    let test_file = test_file(true);
 
     setup_xdg_data_home();
     if let Some(home_trash_info_dir) = freedesktop_home_trash_info_dir() {
