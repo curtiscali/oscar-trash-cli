@@ -42,7 +42,7 @@ pub fn with_trashinfo_extension(p: &PathBuf) -> PathBuf {
     })
 }
 
-fn create_home_trash_info_dir_if_not_exists() -> Result<bool>{
+pub fn create_home_trash_info_dir_if_not_exists() -> Result<bool>{
     if let Some(home_trash_info_dir) = freedesktop_home_trash_info_dir() {
         return match exists(&home_trash_info_dir) {
             Ok(true) => Ok(false), // dir already exists & no action is needed, so we send false
@@ -62,7 +62,7 @@ fn create_home_trash_info_dir_if_not_exists() -> Result<bool>{
     );
 }
 
-fn create_home_trash_files_dir_if_not_exists() -> Result<bool>{
+pub fn create_home_trash_files_dir_if_not_exists() -> Result<bool>{
     if let Some(home_trash_files_dir) = freedesktop_home_trash_files_dir() {
         return match exists(&home_trash_files_dir) {
             Ok(true) => Ok(false), // dir already exists & no action is needed, so we send false
@@ -82,7 +82,7 @@ fn create_home_trash_files_dir_if_not_exists() -> Result<bool>{
     );
 }
 
-pub fn create_trash_dir_if_not_exists() -> Result<bool> {
+pub fn create_home_trash_dir_if_not_exists() -> Result<bool> {
     match create_home_trash_info_dir_if_not_exists() {
         Ok(was_info_dir_created) => {
             match create_home_trash_files_dir_if_not_exists() {

@@ -8,7 +8,7 @@ fn from_option(s: &Option<String>) -> String {
     s.clone().unwrap()
 }
 
-#[derive(Tabled)]
+#[derive(Tabled, Debug, PartialEq)]
 #[tabled(rename_all = "CamelCase")]
 pub struct TrashInfo {
     #[tabled(skip)]

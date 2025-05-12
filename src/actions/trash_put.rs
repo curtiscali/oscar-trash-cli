@@ -6,12 +6,11 @@ use std::{
 
 use chrono::Local;
 use configparser::ini::Ini;
-use inquire::{Confirm, InquireError};
 
 use crate::{common::*, constants::*, string_encode::encode_filename};
 
 fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             let trash_info_section_header = String::from(TRASH_INFO_SECTION_HEADER);
             let mut trash_info_ini = Ini::new();
@@ -50,41 +49,27 @@ fn create_trash_info_entry(path: &PathBuf) -> Result<()> {
 }
 
 pub fn trash_put(path: &String) -> Result<()> {
-    match create_trash_dir_if_not_exists() {
+    match create_home_trash_dir_if_not_exists() {
         Ok(_) => {
             match canonicalize(path) {
                 Ok(os_absolute_path) => {
                     match exists(&os_absolute_path) {
                         Ok(exists) => {
                             if exists {
-                                let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
-                                    .with_default(false)
-                                    .prompt();
-
-                                match should_place_in_trash_result {
-                                    Ok(true) => {
-                                        match create_trash_info_entry(&os_absolute_path) {
-                                            Ok(_) => {
-                                                let trash_files_directory = freedesktop_home_trash_files_dir().unwrap();
-                                                match os_absolute_path.file_name() {
-                                                    Some(filename) => {
-                                                        match rename(path, trash_files_directory.join(filename)) {
-                                                            Ok(_) => Ok(()),
-                                                            Err(error) => Err(error)
-                                                        }
-                                                    },
-                                                    None => Err(Error::new(ErrorKind::InvalidInput, format!("Cannot place {} in trash", path)))
+                                match create_trash_info_entry(&os_absolute_path) {
+                                    Ok(_) => {
+                                        let trash_files_directory = freedesktop_home_trash_files_dir().unwrap();
+                                        match os_absolute_path.file_name() {
+                                            Some(filename) => {
+                                                match rename(path, trash_files_directory.join(filename)) {
+                                                    Ok(_) => Ok(()),
+                                                    Err(error) => Err(error)
                                                 }
                                             },
-                                            Err(error) => Err(error)
+                                            None => Err(Error::new(ErrorKind::InvalidInput, format!("Cannot place {} in trash", path)))
                                         }
                                     },
-                                    Ok(false) => Ok(()),
-                                    Err(error) => match error {
-                                        InquireError::OperationCanceled => Ok(()),
-                                        InquireError::OperationInterrupted => Ok(()),
-                                        _ => Err(Error::new(ErrorKind::Other, error.to_string()))
-                                    }
+                                    Err(error) => Err(error)
                                 }
                             } else {
                                 Err(Error::new(ErrorKind::NotFound, format!("{} does not exist", path)))

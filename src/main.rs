@@ -1,20 +1,14 @@
 use std::error::Error;
 
-use actions::{
+use oscar::actions::{
     trash_list::trash_list, 
     trash_put::trash_put, 
     trash_remove::trash_remove, 
     trash_restore::trash_restore
 };
 use clap::{Parser, Subcommand};
-use common::get_home_trash_contents;
-use inquire::{InquireError, Select};
-
-mod common;
-mod actions;
-mod constants;
-mod string_encode;
-mod trash_info;
+use oscar::common::get_home_trash_contents;
+use inquire::{Confirm, InquireError, Select};
 
 fn show_cmd_not_yet_implemented() {
     println!("This command has not yet been implemented");
@@ -72,9 +66,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     // TODO: implement each of these sub commands
     match args.cmd {
         OscarCommand::Put { path } => {
-            match trash_put(&path) {
-                Ok(_) => Ok(()),
-                Err(error) => Err(Box::new(error))
+            let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
+                .with_default(false)
+                .prompt();
+
+            match should_place_in_trash_result {
+                Ok(true) => match trash_put(&path) {
+                    Ok(_) => Ok(()),
+                    Err(error) => Err(Box::new(error))
+                },
+                Ok(false) => Ok(()),
+                Err(error) => match error {
+                    InquireError::OperationCanceled => Ok(()),
+                    InquireError::OperationInterrupted => Ok(()),
+                    _ => Err(Box::new(error))
+                }
             }
         },
         OscarCommand::Empty {} => {
@@ -118,9 +124,22 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     match user_response {
                         Ok(selected_item) => {
-                            match trash_remove(&selected_item) {
-                                Ok(_) => Ok(()),
-                                Err(error) => Err(Box::new(error))
+                            let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
+                            let should_rm_from_trash_result = Confirm::new(&message.as_str())
+                                .with_default(false)
+                                .prompt();
+
+                            match should_rm_from_trash_result {
+                                Ok(true) => match trash_remove(&selected_item) {
+                                    Ok(_) => Ok(()),
+                                    Err(error) => Err(Box::new(error))
+                                },
+                                Ok(false) => Ok(()),
+                                Err(error) => match error {
+                                    InquireError::OperationCanceled => Ok(()),
+                                    InquireError::OperationInterrupted => Ok(()),
+                                    _ => Err(Box::new(error))
+                                }
                             }
                         },
                         Err(error) => {
