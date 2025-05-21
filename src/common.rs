@@ -95,33 +95,21 @@ pub fn create_home_trash_dir_if_not_exists() -> Result<bool> {
 }
 
 pub fn get_home_trash_contents() -> Result<Vec<TrashInfo>> {
-    let mut trash_contents = vec![];
+    if let Some(info_path) = freedesktop_home_trash_info_dir() {
+        let mut trash_contents = vec![];
 
-    match freedesktop_home_trash_info_dir() {
-        Some(info_path) => {
-            match read_dir(info_path) {
-                Ok(contents) => {
-                    for result in contents {
-                        match result {
-                            Ok(entry) => {
-                                let path = entry.path();
-                                if path.is_file() {
-                                    match TrashInfo::from_file(path) {
-                                        Some(trash_info) => trash_contents.push(trash_info),
-                                        None => continue
-                                    }
-                                }
-                            },
-                            Err(_) => continue
-                        }
-                    }
-
-                    Ok(trash_contents)
-                },
-                Err(error) => Err(error)
+        for entry in read_dir(info_path)? {
+            let path = entry?.path();
+            if path.is_file() {
+                if let Ok(trash_info) = TrashInfo::from_file(path) {
+                    trash_contents.push(trash_info);
+                }
             }
-        },
-        None => Err(
+        }
+
+        Ok(trash_contents)
+    } else {
+        Err(
             Error::new(
                 std::io::ErrorKind::Other, 
                 "Unable to determine the path for the home trash directory."

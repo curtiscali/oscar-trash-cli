@@ -48,7 +48,10 @@ enum OscarCommand {
 
     /// remove individual files from the trashcan. 
     #[clap(alias = "rm")]
-    Remove {},
+    Remove {
+        #[arg(short, long, default_value_t=false)]
+        yes: bool
+    },
 }
 
 /// Command Line tool to manage your system's Freedesktop.org trash
@@ -63,7 +66,6 @@ struct Args {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    // TODO: implement each of these sub commands
     match args.cmd {
         OscarCommand::Put { path } => {
             let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
@@ -140,28 +142,35 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(error) => Err(Box::new(error))
             }
         },
-        OscarCommand::Remove {} => {
+        OscarCommand::Remove { yes } => {
             match get_home_trash_contents() {
                 Ok(trash_contents) => {
                     let user_response = Select::new("Select an item from the trash to remove", trash_contents).prompt();
 
                     match user_response {
                         Ok(selected_item) => {
-                            let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
-                            let should_rm_from_trash_result = Confirm::new(&message.as_str())
-                                .with_default(false)
-                                .prompt();
-
-                            match should_rm_from_trash_result {
-                                Ok(true) => match trash_remove(&selected_item) {
+                            if yes {
+                                match trash_remove(&selected_item) {
                                     Ok(_) => Ok(()),
                                     Err(error) => Err(Box::new(error))
-                                },
-                                Ok(false) => Ok(()),
-                                Err(error) => match error {
-                                    InquireError::OperationCanceled => Ok(()),
-                                    InquireError::OperationInterrupted => Ok(()),
-                                    _ => Err(Box::new(error))
+                                }
+                            } else {
+                                let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
+                                let should_rm_from_trash_result = Confirm::new(&message.as_str())
+                                    .with_default(false)
+                                    .prompt();
+
+                                match should_rm_from_trash_result {
+                                    Ok(true) => match trash_remove(&selected_item) {
+                                        Ok(_) => Ok(()),
+                                        Err(error) => Err(Box::new(error))
+                                    },
+                                    Ok(false) => Ok(()),
+                                    Err(error) => match error {
+                                        InquireError::OperationCanceled => Ok(()),
+                                        InquireError::OperationInterrupted => Ok(()),
+                                        _ => Err(Box::new(error))
+                                    }
                                 }
                             }
                         },
