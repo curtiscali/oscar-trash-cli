@@ -8,10 +8,31 @@ Oscar the Trash CLI is my personal port of [trash-cli](https://github.com/andrea
 
 Oscar implements the [FreeDesktop.org Trash Specifcation](https://specifications.freedesktop.org/trash-spec/latest/), so will be able to seamlessly integrate into any environment (e.g. GNOME, KDE, etc) that uses that specification. For systems that do not, this will effectively operate as a secondary, independent system trash.
 
-**NOTE:**
+**NOTE:** Currently this CLI only works on the home trash for a given system. Future features I would like to implement include adding a hard drive for all partitions
 
 ## Installation
+
+### Distro Package Mangers
+If this project goes far enough, I would love to work with various distros to get this included in their package managers
+
+### Cargo (Planned)
 Coming soon! Since this is written in Rust, the hope will be to put this on Cargo and make installation as simple as `cargo install oscar-trash-cli`. It will be some time before this is ready for prime time, however, so this may change.
+
+### Build from Source
+1. Clone this repository E.g:
+`git clone https://github.com/curtiscali/oscar-trash-cli.git`
+
+2. cd into the cloned repo
+`cd oscar-trash-cli`
+
+3. Build Oscar in release mode (this makes the CLI a bit faster)
+`cargo build -r [-j <number of cores for your CPU goes here>] #-j is completely optional, but will speed up compilation a bit`
+
+4. If compilation succeeds, the compiled binary will be located in `target/release/oscar`
+5. To install oscar, simply move the above binary to any directory located in your PATH. E.g;
+`sudo mv target/release/oscar /usr/local/bin`
+
+Congratulations! You can now use Oscar! Please see the section below for usage guide
 
 ## Usage
 **WARNING: This software is under development, so the following may be changed as implementation progresses**
@@ -26,9 +47,12 @@ Oscar supports the following commands:
 - Remove: permanently deletes an individual file from the trash and system
 
 ```sh
-oscar put|p [file/directory]
-oscar empty|e
-oscar list|ls [options]
-oscar rs|restore [file/directory]
-oscar rm [file/directory]
+oscar [-h|--help] # documents all available commands in oscar
+oscar <command> [-h|--help] # documents all options for whichever command you entered
+
+oscar put|p [file/directory] # places a file specified by the user into the home trash
+oscar empty|e [-y|--yes] # empties the home trash. Permanently deletes all files/directories in the home trash
+oscar list|ls [-r|--recursive] # lists all contents of the home trash.
+oscar restore|rs [-o|--overwrite] #restores a file from the home trash to its original location
+oscar rm [-y|--yes] #permanently deletes an individual file
 ```
