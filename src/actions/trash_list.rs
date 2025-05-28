@@ -5,8 +5,7 @@ use std::{
 };
 
 use tabled::{settings::Style, Table};
-use termtree::Tree;
-use crate::common::*;
+use crate::{common::*, tree::Tree};
 
 fn files_tree_label<P: AsRef<Path>>(p: P) -> String {
     let name = p.as_ref()
@@ -41,33 +40,21 @@ fn files_tree<P: AsRef<Path>>(p: P) -> Result<Tree<String>> {
 }
 
 pub fn trash_list(recursive: bool) -> Result<()> {
-    match create_home_trash_dir_if_not_exists() {
-        Ok(_) => {
-            if recursive {
-                let trash_files_dir = freedesktop_home_trash_files_dir().unwrap();
-                match files_tree(trash_files_dir) {
-                    Ok(tree) => {
-                        println!("{tree}");
-                        Ok(())
-                    },
-                    Err(error) => Err(error)
-                }
-            } else {
-                match get_home_trash_contents() {
-                    Ok(mut trash_contents) => {
-                        trash_contents.sort_by(|a, b| b.deletion_date.cmp(&a.deletion_date));
-    
-                        let mut table = Table::new(trash_contents);
-                        table.with(Style::modern_rounded());
-    
-                        print!("{}", table.to_string());
-                        Ok(())
-                    },
-                    Err(error) => Err(error)
-                }
-            }
-        },
-        Err(error) => Err(error)
+    create_home_trash_dir_if_not_exists()?;
+
+    if recursive {
+        let trash_files_dir = freedesktop_home_trash_files_dir().unwrap();
+        let tree = files_tree(trash_files_dir)?;
+        println!("{tree}");
+    } else {
+        let mut trash_contents = get_home_trash_contents()?;
+        trash_contents.sort_by(|a, b| b.deletion_date.cmp(&a.deletion_date));
+
+        let mut table = Table::new(trash_contents);
+        table.with(Style::modern_rounded());
+
+        print!("{}", table.to_string());
     }
 
+    Ok(())
 }
