@@ -1,15 +1,12 @@
-use std::error::Error;
+use std::{collections::HashMap, error::Error, io::Result, path::PathBuf};
 
-use oscar::actions::{
-    trash_list::trash_list, 
-    trash_put::trash_put, 
-    trash_remove::trash_remove, 
-    trash_restore::trash_restore,
-    trash_empty::trash_empty
-};
+use oscar::{actions::{
+    trash_empty::trash_empty, trash_list::trash_list, trash_put::trash_put, trash_remove::trash_remove, trash_restore::trash_restore
+}, mount::{self, get_mounted_devices, MountedDevice}, trash::Trash};
 use clap::{Parser, Subcommand};
 use oscar::common::get_home_trash_contents;
 use inquire::{Confirm, InquireError, Select};
+use tabled::{settings::Style, Table};
 
 #[derive(Subcommand, Debug)]
 enum OscarCommand {
@@ -24,33 +21,48 @@ enum OscarCommand {
     #[clap(alias = "e")]
     Empty {
         #[arg(short, long, default_value_t=false)]
-        yes: bool
+        yes: bool,
+
+        /// Empty the trash of a mounted device (e.g. /dev/sda1). By default will empty the home trash. To empty all trashes, use all
+        device: Option<String>
     },
+
+    /// Lists all devices where the user can trash files
+    ListDevices {},
 
     /// list all files or directories in the trash
     #[clap(alias = "ls")]
     List {
         /// List trash contents recursively
         #[arg(short, long, default_value_t=false)]
-        recursive: bool
+        recursive: bool,
+
+        /// List contents of a mounted device (e.g. /dev/sda1). By default will list contents of the home trash. To list contents of all trashes, use all
+        #[arg(short, long)]
+        device: Option<String>
     },
 
     /// restore a file/directory in the trash to its original location
     #[clap(alias = "rs")]
     Restore {
-        /// the path of the file, relative to the system trash, to restore its original location
-        //path: Option<String>,
-
         /// Overwrite the file currently on disk if there is a conflict
         #[arg(long, default_value_t=false)]
-        overwrite: bool
+        overwrite: bool,
+
+        /// The device in which an item will be restored, if no device is specified the home trash will be used by default
+        #[arg(short, long)]
+        device: Option<String>
     },
 
     /// remove individual files from the trashcan. 
     #[clap(alias = "rm")]
     Remove {
         #[arg(short, long, default_value_t=false)]
-        yes: bool
+        yes: bool,
+
+        /// The device from which an item will be removed, if no device is specified the home trash will be used by default
+        #[arg(short, long)]
+        device: Option<String>
     },
 }
 
@@ -63,7 +75,16 @@ struct Args {
     cmd: OscarCommand
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> std::result::Result<(), Box<dyn Error>> {
+    let mounted_devices = get_mounted_devices()?;
+    let trashes = mounted_devices.iter()
+        .map(|mounted_device| Trash::new(mounted_device))
+        .collect::<Vec<Trash>>();
+
+    let trashes_by_mount_point = trashes.iter()
+        .map(|trash| (trash.device.mount_point.clone(), trash))
+        .collect::<HashMap<String, &Trash>>();
+
     let args = Args::parse();
 
     match args.cmd {
@@ -85,7 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         },
-        OscarCommand::Empty { yes } => {
+        OscarCommand::Empty { yes, device } => {
             if yes {
                 match trash_empty() {
                     Ok(_) => Ok(()),
@@ -112,13 +133,23 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         },
-        OscarCommand::List { recursive } => {
-            match trash_list(recursive) {
-                Ok(_) => Ok(()),
-                Err(error) => Err(Box::new(error))
+        OscarCommand::List { recursive, device } => {
+            let selected_device_opt = if let Some(device_name) = device {
+                trashes.iter().find(|t| t.device.name.eq(&device_name))
+            } else {
+                trashes.iter().find(|t| t.device.mount_point.eq("/") || t.device.mount_point.eq("/home"))
+            };
+
+            if let Some(selected_device) = selected_device_opt {
+                match selected_device.list(recursive) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(Box::new(err))
+                }
+            }else {
+                Ok(())
             }
         },
-        OscarCommand::Restore { overwrite } => {
+        OscarCommand::Restore { overwrite, device } => {
             match get_home_trash_contents() {
                 Ok(trash_contents) => {
                     let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
@@ -142,7 +173,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(error) => Err(Box::new(error))
             }
         },
-        OscarCommand::Remove { yes } => {
+        OscarCommand::Remove { yes, device } => {
             match get_home_trash_contents() {
                 Ok(trash_contents) => {
                     let user_response = Select::new("Select an item from the trash to remove", trash_contents).prompt();
@@ -185,6 +216,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 },
                 Err(error) => Err(Box::new(error))
             }
+        },
+        OscarCommand::ListDevices {} => {
+            let mounted_devices = trashes.iter().map(|t| &t.device).collect::<Vec<&MountedDevice>>();
+            let mut table = Table::new(mounted_devices);
+            table.with(Style::modern_rounded());
+
+            print!("{}", table.to_string());
+
+            Ok(())
         }
     }
 }
