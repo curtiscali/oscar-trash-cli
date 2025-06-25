@@ -1,8 +1,16 @@
-use std::{collections::HashMap, error::Error, io::Result, path::PathBuf};
+use std::{
+    error::Error,
+};
 
-use oscar::{actions::{
-    trash_empty::trash_empty, trash_list::trash_list, trash_put::trash_put, trash_remove::trash_remove, trash_restore::trash_restore
-}, mount::{self, get_mounted_devices, MountedDevice}, trash::Trash};
+use oscar::{
+    actions::{
+        trash_empty::trash_empty,
+        trash_put::trash_put,
+        trash_remove::trash_remove
+    },
+    mount::{get_mounted_devices, MountedDevice},
+    trash::Trash,
+};
 use clap::{Parser, Subcommand};
 use oscar::common::get_home_trash_contents;
 use inquire::{Confirm, InquireError, Select};
@@ -24,6 +32,7 @@ enum OscarCommand {
         yes: bool,
 
         /// Empty the trash of a mounted device (e.g. /dev/sda1). By default will empty the home trash. To empty all trashes, use all
+        #[arg(short, long)]
         device: Option<String>
     },
 
@@ -63,7 +72,7 @@ enum OscarCommand {
         /// The device from which an item will be removed, if no device is specified the home trash will be used by default
         #[arg(short, long)]
         device: Option<String>
-    },
+    }
 }
 
 /// Command Line tool to manage your system's Freedesktop.org trash
@@ -80,10 +89,6 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
     let trashes = mounted_devices.iter()
         .map(|mounted_device| Trash::new(mounted_device))
         .collect::<Vec<Trash>>();
-
-    let trashes_by_mount_point = trashes.iter()
-        .map(|trash| (trash.device.mount_point.clone(), trash))
-        .collect::<HashMap<String, &Trash>>();
 
     let args = Args::parse();
 
@@ -150,27 +155,19 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
             }
         },
         OscarCommand::Restore { overwrite, device } => {
-            match get_home_trash_contents() {
-                Ok(trash_contents) => {
-                    let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
+            let selected_device_opt = if let Some(device_name) = device {
+                trashes.iter().find(|t| t.device.name.eq(&device_name))
+            } else {
+                trashes.iter().find(|t| t.device.mount_point.eq("/") || t.device.mount_point.eq("/home"))
+            };
 
-                    match user_response {
-                        Ok(selected_item) => {
-                            match trash_restore(&selected_item, overwrite) {
-                                Ok(_) => Ok(()),
-                                Err(error) => Err(Box::new(error))
-                            }
-                        },
-                        Err(error) => {
-                            match error {
-                                InquireError::OperationCanceled => Ok(()),
-                                InquireError::OperationInterrupted => Ok(()),
-                                _ => Err(Box::new(error))
-                            }
-                        }
-                    }
-                },
-                Err(error) => Err(Box::new(error))
+            if let Some(selected_device) = selected_device_opt {
+                match selected_device.restore(overwrite) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(Box::new(err))
+                }
+            }else {
+                Ok(())
             }
         },
         OscarCommand::Remove { yes, device } => {

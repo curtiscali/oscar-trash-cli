@@ -1,11 +1,33 @@
 use std::{
-    fs::{create_dir_all, exists, read_dir},
-    io::Result, path::Path
+    fs::{
+        create_dir_all, exists, read_dir, remove_file, rename
+    },
+    io::{Error, ErrorKind, Result},
+    path::{Path, PathBuf},
 };
 
-use tabled::{settings::Style, Table};
+use inquire::{InquireError, Select};
+use tabled::{
+    settings::Style,
+    Table,
+};
 
-use crate::{mount::MountedDevice, trash_info::TrashInfo, tree::Tree};
+use crate::{
+    common::with_trashinfo_extension, mount::MountedDevice, string_encode::decode_filename, trash_info::TrashInfo, tree::Tree
+};
+
+fn restore_from_trash(trash_info_path: &PathBuf, trash_item_path: &PathBuf, destination_path: &PathBuf) -> Result<()> {
+    if let Some(parent_path) = destination_path.parent() {
+        if !exists(parent_path)? {
+            create_dir_all(parent_path)?;
+        }
+    }
+
+    rename(trash_item_path, destination_path)?;
+    remove_file(trash_info_path)?;
+
+    Ok(())
+}
 
 #[derive(Debug)]
 pub struct Trash {
@@ -65,6 +87,53 @@ impl Trash {
         }
 
         Ok(())
+    }
+
+    pub fn restore(&self, overwrite: bool) -> Result<()> {
+        let trash_contents = self.contents()?;
+
+        let user_response = Select::new("Select an item from the trash to restore", trash_contents).prompt();
+        match user_response {
+            Ok(selected_item) => {
+                self.create_trash_dir_if_not_exists()?;
+
+                let trash_files_dir = self.device.trash_files_dir()?;
+                let trash_info_dir = self.device.trash_info_dir()?;
+
+                let full_trash_file_path = trash_files_dir.join(&selected_item.path);
+                let full_trash_info_path = trash_info_dir.join(with_trashinfo_extension(&Path::new(&selected_item.path).to_path_buf()));
+
+                if exists(&full_trash_file_path)? {
+                    let destination_path = if selected_item.full_path.starts_with("/") {
+                        Path::new(&decode_filename(&selected_item.full_path)).to_path_buf()
+                    } else {
+                        Path::new(&self.device.mount_point).join(&decode_filename(&selected_item.full_path))
+                    };
+
+                    if exists(&destination_path)? {
+                        if overwrite {
+                            restore_from_trash(&full_trash_info_path, &full_trash_file_path, &destination_path)
+                        } else {
+                            Err(Error::new(ErrorKind::PermissionDenied, format!("{} already exists", &selected_item.full_path)))
+                        }
+                    } else {
+                        restore_from_trash(&full_trash_info_path, &full_trash_file_path, &destination_path)
+                    }
+                } else {
+                    // If there isn't a corresponding file for the trash info, we have bad data and need to delete the trashinfo file
+                    remove_file(full_trash_info_path)?;
+
+                    Ok(())
+                }
+            },
+            Err(error) => {
+                match error {
+                    InquireError::OperationCanceled => Ok(()),
+                    InquireError::OperationInterrupted => Ok(()),
+                    _ => Err(Error::new(ErrorKind::Other, error.to_string()))
+                }
+            }
+        }
     }
 }
 
