@@ -1,5 +1,5 @@
 use std::{
-    error::Error,
+    error::Error, fs::canonicalize,
 };
 
 use oscar::{
@@ -91,7 +91,11 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
 
     match args.cmd {
         OscarCommand::Put { path } => {
-            let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", path).as_str())
+            let full_path = canonicalize(&path)?.to_str().unwrap_or("");
+
+            // TODO: determine which mounted device in which the path belongs and place it in the appropriate trash
+
+            let should_place_in_trash_result = Confirm::new(format!("Are you sure you want to place {} in the trash?", &path).as_str())
                 .with_default(false)
                 .prompt();
 
