@@ -4,16 +4,13 @@ use std::{
 
 use oscar::{
     actions::{
-        trash_empty::trash_empty,
-        trash_put::trash_put,
-        trash_remove::trash_remove
+        trash_put::trash_put
     },
     mount::{get_mounted_devices, MountedDevice},
     trash::Trash,
 };
 use clap::{Parser, Subcommand};
-use oscar::common::get_home_trash_contents;
-use inquire::{Confirm, InquireError, Select};
+use inquire::{Confirm, InquireError};
 use tabled::{settings::Style, Table};
 
 #[derive(Subcommand, Debug)]
@@ -112,30 +109,40 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
             }
         },
         OscarCommand::Empty { yes, device } => {
-            if yes {
-                match trash_empty() {
-                    Ok(_) => Ok(()),
-                    Err(error) => Err(Box::new(error))
-                }
+            let selected_device_opt = if let Some(device_name) = device {
+                trashes.iter().find(|t| t.device.name.eq(&device_name))
             } else {
-                let should_empty_trash_result = Confirm::new("Are you sure you want to empty the trash? This action is irreversible.")
-                    .with_default(false)
-                    .prompt();
+                trashes.iter().find(|t| t.device.mount_point.eq("/") || t.device.mount_point.eq("/home"))
+            };
 
-                match should_empty_trash_result {
-                    Ok(true) => match trash_empty() {
+            if let Some(selected_device) = selected_device_opt {
+                if yes {
+                    match selected_device.empty() {
                         Ok(_) => Ok(()),
                         Err(error) => Err(Box::new(error))
-                    },
-                    Ok(false) => Ok(()),
-                    Err(error) => {
-                        match error {
-                            InquireError::OperationCanceled => Ok(()),
-                            InquireError::OperationInterrupted => Ok(()),
-                            _ => Err(Box::new(error))
+                    }
+                } else {
+                    let should_empty_trash_result = Confirm::new("Are you sure you want to empty the trash? This action is irreversible.")
+                        .with_default(false)
+                        .prompt();
+
+                    match should_empty_trash_result {
+                        Ok(true) => match selected_device.empty() {
+                            Ok(_) => Ok(()),
+                            Err(error) => Err(Box::new(error))
+                        },
+                        Ok(false) => Ok(()),
+                        Err(error) => {
+                            match error {
+                                InquireError::OperationCanceled => Ok(()),
+                                InquireError::OperationInterrupted => Ok(()),
+                                _ => Err(Box::new(error))
+                            }
                         }
                     }
                 }
+            } else {
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Device not found")))
             }
         },
         OscarCommand::List { recursive, device } => {
@@ -151,7 +158,7 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
                     Err(err) => Err(Box::new(err))
                 }
             }else {
-                Ok(())
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Device not found")))
             }
         },
         OscarCommand::Restore { overwrite, device } => {
@@ -166,52 +173,24 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
                     Ok(_) => Ok(()),
                     Err(err) => Err(Box::new(err))
                 }
-            }else {
-                Ok(())
+            } else {
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Device not found")))
             }
         },
         OscarCommand::Remove { yes, device } => {
-            match get_home_trash_contents() {
-                Ok(trash_contents) => {
-                    let user_response = Select::new("Select an item from the trash to remove", trash_contents).prompt();
+            let selected_device_opt = if let Some(device_name) = device {
+                trashes.iter().find(|t| t.device.name.eq(&device_name))
+            } else {
+                trashes.iter().find(|t| t.device.mount_point.eq("/") || t.device.mount_point.eq("/home"))
+            };
 
-                    match user_response {
-                        Ok(selected_item) => {
-                            if yes {
-                                match trash_remove(&selected_item) {
-                                    Ok(_) => Ok(()),
-                                    Err(error) => Err(Box::new(error))
-                                }
-                            } else {
-                                let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
-                                let should_rm_from_trash_result = Confirm::new(&message.as_str())
-                                    .with_default(false)
-                                    .prompt();
-
-                                match should_rm_from_trash_result {
-                                    Ok(true) => match trash_remove(&selected_item) {
-                                        Ok(_) => Ok(()),
-                                        Err(error) => Err(Box::new(error))
-                                    },
-                                    Ok(false) => Ok(()),
-                                    Err(error) => match error {
-                                        InquireError::OperationCanceled => Ok(()),
-                                        InquireError::OperationInterrupted => Ok(()),
-                                        _ => Err(Box::new(error))
-                                    }
-                                }
-                            }
-                        },
-                        Err(error) => {
-                            match error {
-                                InquireError::OperationCanceled => Ok(()),
-                                InquireError::OperationInterrupted => Ok(()),
-                                _ => Err(Box::new(error))
-                            }
-                        }
-                    }
-                },
-                Err(error) => Err(Box::new(error))
+            if let Some(selected_device) = selected_device_opt {
+                match selected_device.remove(yes) {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(Box::new(err))
+                }
+            } else {
+                Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Device not found")))
             }
         },
         OscarCommand::ListDevices {} => {

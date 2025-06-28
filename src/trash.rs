@@ -1,12 +1,12 @@
 use std::{
     fs::{
-        create_dir_all, exists, read_dir, remove_file, rename
+        create_dir_all, exists, read_dir, remove_dir_all, remove_file, rename
     },
     io::{Error, ErrorKind, Result},
-    path::{Path, PathBuf},
+    path::{Path},
 };
 
-use inquire::{InquireError, Select};
+use inquire::{Confirm, InquireError, Select};
 use tabled::{
     settings::Style,
     Table,
@@ -16,8 +16,8 @@ use crate::{
     common::with_trashinfo_extension, mount::MountedDevice, string_encode::decode_filename, trash_info::TrashInfo, tree::Tree
 };
 
-fn restore_from_trash(trash_info_path: &PathBuf, trash_item_path: &PathBuf, destination_path: &PathBuf) -> Result<()> {
-    if let Some(parent_path) = destination_path.parent() {
+fn restore_from_trash<P: AsRef<Path>>(trash_info_path: P, trash_item_path: P, destination_path: P) -> Result<()> {
+    if let Some(parent_path) = destination_path.as_ref().parent() {
         if !exists(parent_path)? {
             create_dir_all(parent_path)?;
         }
@@ -25,6 +25,62 @@ fn restore_from_trash(trash_info_path: &PathBuf, trash_item_path: &PathBuf, dest
 
     rename(trash_item_path, destination_path)?;
     remove_file(trash_info_path)?;
+
+    Ok(())
+}
+
+fn files_tree_label<P: AsRef<Path>>(p: P, trash: &Trash) -> String {
+    let name = p.as_ref()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+
+    if name.eq(&String::from("files")) {
+        if trash.device.mount_point.eq("/") || trash.device.mount_point.eq("/home")  {
+            String::from("Home Trash")
+        } else {
+            Path::new(&trash.device.mount_point).file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
+        }
+    } else {
+        name
+    }
+}
+
+fn files_tree<P: AsRef<Path>>(p: P, trash: &Trash) -> Result<Tree<String>> {
+    let result = read_dir(&p)?.filter_map(|e| e.ok()).fold(
+        Tree::new(files_tree_label(p.as_ref().canonicalize()?, trash)),
+        |mut root, entry| {
+            let dir = entry.metadata().unwrap();
+            if dir.is_dir() {
+                root.push(files_tree(entry.path(), trash).unwrap());
+            } else {
+                root.push(Tree::new(files_tree_label(entry.path(), trash)));
+            }
+            root
+        },
+    );
+
+    Ok(result)
+}
+
+fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
+    if exists(path.as_ref())? {
+        for dir_entry in read_dir(path.as_ref())? {
+            if let Ok(dir_entry) = dir_entry {
+                if dir_entry.path().is_dir() {
+                    remove_dir_all(dir_entry.path())?;
+                } else {
+                    remove_file(dir_entry.path())?;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -135,44 +191,92 @@ impl Trash {
             }
         }
     }
-}
 
-fn files_tree_label<P: AsRef<Path>>(p: P, trash: &Trash) -> String {
-    let name = p.as_ref()
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
+    fn trash_remove(&self, trash_entry: &TrashInfo) -> Result<()> {
+        let (trash_info_dir, trash_files_dir) = (
+            self.device.trash_info_dir()?, 
+            self.device.trash_files_dir()?
+        );
 
-    if name.eq(&String::from("files")) {
-        if trash.device.mount_point.eq("/") || trash.device.mount_point.eq("/home")  {
-            String::from("Home Trash")
-        } else {
-            Path::new(&trash.device.mount_point).file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned()
-        }
-    } else {
-        name
-    }
-}
+        let full_trash_file_path = trash_files_dir.join(&trash_entry.path);
 
-fn files_tree<P: AsRef<Path>>(p: P, trash: &Trash) -> Result<Tree<String>> {
-    let result = read_dir(&p)?.filter_map(|e| e.ok()).fold(
-        Tree::new(files_tree_label(p.as_ref().canonicalize()?, trash)),
-        |mut root, entry| {
-            let dir = entry.metadata().unwrap();
-            if dir.is_dir() {
-                root.push(files_tree(entry.path(), trash).unwrap());
+        if exists(full_trash_file_path)? {
+            let full_trash_info_path = with_trashinfo_extension(&trash_info_dir.join(&trash_entry.path));
+            let full_trash_item_path = trash_files_dir.join(&trash_entry.path);
+
+            let metadata = full_trash_item_path.metadata()?;
+
+            if metadata.is_dir() {
+                remove_dir_all(&full_trash_item_path)?;
+                remove_file(&full_trash_info_path)?;
+
+                Ok(())
             } else {
-                root.push(Tree::new(files_tree_label(entry.path(), trash)));
-            }
-            root
-        },
-    );
+                remove_file(&full_trash_item_path)?;
+                remove_file(&full_trash_info_path)?;
 
-    Ok(result)
+                Ok(())
+            }
+        } else {
+            Err(Error::new(ErrorKind::NotFound, format!("{} is not in the trash", &trash_entry.path)))
+        }
+    }
+
+    pub fn remove(&self, yes: bool) -> Result<()> {
+        self.create_trash_dir_if_not_exists()?;
+
+        let trash_contents = self.contents()?;
+        let user_response = Select::new("Select an item from the trash to remove", trash_contents).prompt();
+
+        match user_response {
+            Ok(selected_item) => {
+                if yes {
+                    self.trash_remove(&selected_item)
+                } else {
+                    let message = format!("Are you sure you want to delete {}? This action is irreversible.", selected_item.path.as_str());
+                    let should_rm_from_trash_result = Confirm::new(&message.as_str())
+                        .with_default(false)
+                        .prompt();
+
+                    match should_rm_from_trash_result {
+                        Ok(true) => self.trash_remove(&selected_item),
+                        Ok(false) => Ok(()),
+                        Err(error) => match error {
+                            InquireError::OperationCanceled => Ok(()),
+                            InquireError::OperationInterrupted => Ok(()),
+                            _ => Err(Error::new(ErrorKind::Other, error.to_string()))
+                        }
+                    }
+                }
+            },
+            Err(error) => {
+                match error {
+                    InquireError::OperationCanceled => Ok(()),
+                    InquireError::OperationInterrupted => Ok(()),
+                    _ => Err(Error::new(ErrorKind::Other, error.to_string()))
+                }
+            }
+        }
+    }
+
+    fn remove_all_trashinfo_files(&self) -> Result<()> {
+        let trash_info_dir = self.device.trash_info_dir()?;
+        remove_dir_contents(&trash_info_dir)?;
+
+        Ok(())
+    }
+
+    fn remove_all_trash_files(&self) -> Result<()> {
+        let trash_files_dir = self.device.trash_files_dir()?;
+        remove_dir_contents(&trash_files_dir)?;
+
+        Ok(())
+    }
+
+    pub fn empty(&self) -> Result<()> {
+        self.remove_all_trash_files()?;
+        self.remove_all_trashinfo_files()?;
+
+        Ok(())
+    }
 }
